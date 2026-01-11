@@ -110,6 +110,7 @@
         const TrendingUpIcon = (p) => <IconWrapper {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconWrapper>;
         const CalculatorIcon = (p) => <IconWrapper {...p}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="18" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></IconWrapper>;
         const AwardIcon = (p) => <IconWrapper {...p}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></IconWrapper>;
+        const DownloadIcon = (p) => <IconWrapper {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconWrapper>;
 
         // --- DATA & TRANSLATIONS ---
         const TEXTS = {
@@ -141,6 +142,8 @@
             traction: { en: "Key Traction", zh: "目前成績", placeholder: { en: "e.g. 10k users", zh: "例如：一萬名用戶" } },
             ask: { en: "Funding Ask", zh: "募資需求", placeholder: { en: "e.g. $2M USD", zh: "例如：200萬美金" } }
         };
+
+        const GROUPS = ["G1", "G2", "G3", "G4", "G5"];
 
         const CONTENT = {
             mindset: {
@@ -315,7 +318,16 @@
             const [valuation, setValuation] = useState(null);
             
             // Pitch
-            const [pitchData, setPitchData] = useState({ name: '', customer: '', problem: '', solution: '', traction: '', ask: '' });
+            const [pitchData, setPitchData] = useState({ 
+                group: 'G1',
+                userName: '',
+                name: '', 
+                customer: '', 
+                problem: '', 
+                solution: '', 
+                traction: '', 
+                ask: '' 
+            });
             const [pitchResult, setPitchResult] = useState('');
 
             // Theme helpers
@@ -341,6 +353,44 @@
                     ? `Hi, we are ${pitchData.name || '___'}. We help ${pitchData.customer || '___'} solve ${pitchData.problem || '___'} with our ${pitchData.solution || '___'}. We have achieved ${pitchData.traction || '___'} and are looking for ${pitchData.ask || '___'} to scale.`
                     : `你好，我們是 ${pitchData.name || '___'}。我們協助 ${pitchData.customer || '___'} 解決 ${pitchData.problem || '___'} 的問題。我們的解決方案是 ${pitchData.solution || '___'}。目前成績為 ${pitchData.traction || '___'}，正尋求 ${pitchData.ask || '___'} 資金以擴大規模。`;
                 setPitchResult(t);
+            };
+
+            const exportToCSV = () => {
+                if (!pitchData.userName) {
+                    alert(lang === 'en' ? 'Please enter your Name before exporting.' : '請輸入姓名才能匯出。');
+                    return;
+                }
+
+                // Headers
+                const headers = ["Group", "Name", "Company", "Customer", "Problem", "Solution", "Traction", "Ask", "Generated Script"];
+                
+                // Data Row (Escape quotes for CSV format)
+                const safeCSV = (str) => `"${String(str).replace(/"/g, '""')}"`;
+                
+                const row = [
+                    safeCSV(pitchData.group),
+                    safeCSV(pitchData.userName),
+                    safeCSV(pitchData.name),
+                    safeCSV(pitchData.customer),
+                    safeCSV(pitchData.problem),
+                    safeCSV(pitchData.solution),
+                    safeCSV(pitchData.traction),
+                    safeCSV(pitchData.ask),
+                    safeCSV(pitchResult)
+                ];
+
+                // BOM for UTF-8 support in Excel
+                const csvContent = "\uFEFF" + [headers.join(','), row.join(',')].join('\n');
+                
+                // Download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", `Pitch_${pitchData.group}_${pitchData.userName}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             };
 
             const navItems = Object.keys(TEXTS.nav).map(key => ({
@@ -548,12 +598,38 @@
                             </div>
                         )}
 
-                        {/* PITCH GENERATOR (Fixed Translations) */}
+                        {/* PITCH GENERATOR (Fixed Translations & CSV Export) */}
                         {activeSection === 'pitch' && (
                             <div className="animate-fadeIn">
                                 <SectionHeader title={TEXTS.nav.pitch[lang]} subtitle={lang === 'en' ? "Generate your script in 30 seconds" : "30秒生成您的講稿"} theme={theme} />
                                 <div className="grid lg:grid-cols-2 gap-12">
                                     <div className="space-y-4">
+                                        
+                                        {/* New Identity Fields */}
+                                        <div className={`p-4 rounded border-l-4 border-emerald-500 ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50'}`}>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-xs font-bold uppercase opacity-60 ml-1">{lang === 'en' ? 'Group' : '組別'}</label>
+                                                    <select 
+                                                        value={pitchData.group}
+                                                        onChange={e => setPitchData({...pitchData, group: e.target.value})}
+                                                        className={`w-full p-3 rounded border-b-2 bg-transparent focus:border-emerald-500 outline-none transition ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}
+                                                    >
+                                                        {GROUPS.map(g => <option key={g} value={g} className="text-slate-900">{g}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-bold uppercase opacity-60 ml-1">{lang === 'en' ? 'Name (Required)' : '姓名 (必填)'}</label>
+                                                    <input 
+                                                        value={pitchData.userName}
+                                                        onChange={e => setPitchData({...pitchData, userName: e.target.value})}
+                                                        className={`w-full p-3 rounded border-b-2 bg-transparent focus:border-emerald-500 outline-none transition ${theme === 'dark' ? 'border-slate-700' : 'border-slate-300'}`}
+                                                        placeholder={lang === 'en' ? 'Your Name' : '請輸入姓名'}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         {['name', 'customer', 'problem', 'solution', 'traction', 'ask'].map((field) => (
                                             <div key={field}>
                                                 <label className="text-xs font-bold uppercase opacity-60 ml-1">
@@ -574,16 +650,24 @@
                                             {lang === 'en' ? 'Generate Script' : '生成講稿'}
                                         </button>
                                     </div>
-                                    <div className={`p-8 rounded shadow-2xl border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                                    <div className={`p-8 rounded shadow-2xl border flex flex-col ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
                                         <h3 className="font-serif font-bold text-xl mb-6 text-emerald-500">{lang === 'en' ? 'Your Script' : '您的講稿'}</h3>
-                                        <p className="text-lg leading-loose font-medium opacity-90 whitespace-pre-line">
+                                        <p className="text-lg leading-loose font-medium opacity-90 whitespace-pre-line flex-grow">
                                             {pitchResult || (lang === 'en' ? "Fill in the fields on the left to generate..." : "請填寫左側欄位以生成內容...")}
                                         </p>
-                                        {pitchResult && (
-                                            <button onClick={() => navigator.clipboard.writeText(pitchResult)} className="mt-6 flex items-center gap-2 text-sm opacity-60 hover:opacity-100 hover:text-emerald-500 transition">
-                                                <AwardIcon size={16} /> {lang === 'en' ? 'Copy to Clipboard' : '複製到剪貼簿'}
-                                            </button>
-                                        )}
+                                        
+                                        <div className="mt-8 pt-6 border-t border-slate-500/30 flex gap-4">
+                                            {pitchResult && (
+                                                <button onClick={() => navigator.clipboard.writeText(pitchResult)} className="flex-1 py-2 flex items-center justify-center gap-2 text-sm opacity-60 hover:opacity-100 hover:text-emerald-500 transition border border-transparent hover:border-emerald-500 rounded">
+                                                    <AwardIcon size={16} /> {lang === 'en' ? 'Copy Text' : '複製文字'}
+                                                </button>
+                                            )}
+                                            {pitchResult && (
+                                                <button onClick={exportToCSV} className="flex-1 py-2 flex items-center justify-center gap-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded shadow transition">
+                                                    <DownloadIcon size={16} /> {lang === 'en' ? 'Export CSV' : '匯出 CSV'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
